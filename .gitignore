@@ -49,6 +49,19 @@ api-conta/test-sync-completo.php
 api-conta/test-sync.php
 api-conta/migraciones_generadas.txt
 
+# === Documentación temporal / notas ===
+CAMBIOS_LOGIN.txt
+CORRECCIONES.md
+EJEMPLO_VB6_SALDOS.txt
+GUIA_*.md
+INSTRUCCIONES_PRUEBA.md
+INTEGRACION_LOGIN.md
+Nota de sincronizacion.txt
+README_INICIO_RAPIDO.md
+README_SINCRONIZACION.md
+RESUMEN_*.md
+SINCRONIZACION.md
+
 # === Scripts temporales frontend ===
 frontend-conta/add_password_change.cjs
 frontend-conta/fix_profile.cjs
