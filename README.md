@@ -1,6 +1,7 @@
 # Conta Web 5
 
 Sistema de Contabilidad con Frontend React y Backend Lumen (Laravel).
+Plataforma desde donde los clientes que usan el software Conta Rs pueden visualizar en linea estadisticas
 
 ## Estructura del Proyecto
 
