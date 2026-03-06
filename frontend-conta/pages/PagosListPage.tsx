@@ -71,10 +71,15 @@ const PagosListPage: FC<PageProps> = ({ setActivePage }) => {
     }
   };
 
-  useEffect(() => { cargarPagos(); }, []);
+  const fechaInicioRef = React.useRef(fechaInicio);
+  const fechaFinRef = React.useRef(fechaFin);
+  fechaInicioRef.current = fechaInicio;
+  fechaFinRef.current = fechaFin;
+
+  useEffect(() => { cargarPagos(1, '', fechaInicio, fechaFin); }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => { cargarPagos(1, searchTerm); }, 400);
+    const timer = setTimeout(() => { cargarPagos(1, searchTerm, fechaInicioRef.current, fechaFinRef.current); }, 400);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
@@ -210,12 +215,12 @@ const PagosListPage: FC<PageProps> = ({ setActivePage }) => {
             <span className="text-sm text-gray-500">Página {currentPage} de {lastPage}</span>
             <div className="flex space-x-2">
               <button
-                onClick={() => cargarPagos(currentPage - 1, searchTerm)}
+                onClick={() => cargarPagos(currentPage - 1, searchTerm, fechaInicio, fechaFin)}
                 disabled={currentPage <= 1}
                 className="px-3 py-1 text-sm font-medium text-gray-600 bg-white rounded-lg hover:bg-gray-100 border disabled:opacity-50"
               >Anterior</button>
               <button
-                onClick={() => cargarPagos(currentPage + 1, searchTerm)}
+                onClick={() => cargarPagos(currentPage + 1, searchTerm, fechaInicio, fechaFin)}
                 disabled={currentPage >= lastPage}
                 className="px-3 py-1 text-sm font-medium text-gray-600 bg-white rounded-lg hover:bg-gray-100 border disabled:opacity-50"
               >Siguiente</button>

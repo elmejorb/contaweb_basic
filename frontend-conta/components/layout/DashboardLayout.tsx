@@ -23,6 +23,10 @@ import MovimientoCajaPage from '../../pages/MovimientoCajaPage';
 import RegistroEmpresaConCRM from '../../pages/RegistroEmpresaConCRM';
 import CarteraClientesPage from '../../pages/CarteraClientesPage';
 import PagosListPage from '../../pages/PagosListPage';
+import ReporteMensualPage from '../../pages/ReporteMensualPage';
+import DiagnosticoInventarioPage from '../../pages/DiagnosticoInventarioPage';
+import RankingClientesPage from '../../pages/RankingClientesPage';
+import ComparativoVentasPage from '../../pages/ComparativoVentasPage';
 
 interface PageProps {
   setActivePage: (page: string) => void;
@@ -52,6 +56,10 @@ const pageComponents: { [key: string]: React.FC<PageProps> } = {
   'Movimiento de Caja': MovimientoCajaPage,
   'Registrar Empresa CRM': RegistroEmpresaConCRM,
   'Listado de Pagos': PagosListPage,
+  'Reporte Mensual': ReporteMensualPage,
+  'Diagnóstico (30 días)': DiagnosticoInventarioPage,
+  'Ranking de Clientes': RankingClientesPage,
+  'Comparativo de Ventas': ComparativoVentasPage,
   // Add other pages here as they are created
 };
 

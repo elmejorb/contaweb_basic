@@ -6,7 +6,8 @@ import {
     UserGroupIcon,
     TruckIcon,
     ArrowsRightLeftIcon,
-    CogIcon
+    CogIcon,
+    ClipboardListIcon
 } from '../icons/IconComponents';
 
 const ZynixLogo: React.FC<{ isCollapsed: boolean }> = ({ isCollapsed }) => (
@@ -38,6 +39,7 @@ const menuConfig: MenuItem[] = [
         children: [
             { label: 'Categorias' },
             { label: 'Listado de Productos' },
+            { label: 'Diagnóstico (30 días)' },
         ]
     },
     {
@@ -62,6 +64,15 @@ const menuConfig: MenuItem[] = [
             { label: 'Listado de Ventas' },
             { label: 'Listado de Pagos' },
             { label: 'Cierres de Caja' },
+        ]
+    },
+    {
+        label: 'Reportes',
+        icon: ClipboardListIcon,
+        children: [
+            { label: 'Reporte Mensual' },
+            { label: 'Comparativo de Ventas' },
+            { label: 'Ranking de Clientes' },
         ]
     },
     {

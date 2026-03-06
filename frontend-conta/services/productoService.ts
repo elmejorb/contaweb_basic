@@ -43,6 +43,36 @@ export interface ProductoListResponse {
   last_page: number;
 }
 
+export interface ProductoDiagnostico {
+  id_producto: number;
+  codigo: string;
+  nombre: string;
+  existencia: number;
+  precio_costo: number;
+  precio_venta: number;
+  margen: number;
+  unidades_vendidas: number;
+  veces_vendido: number;
+  capital_invertido: number;
+  rotacion: 'alta' | 'media' | 'baja';
+  diagnostico: string;
+  tipo: 'success' | 'warning' | 'danger' | 'info' | 'ok';
+}
+
+export interface DiagnosticoResponse {
+  error: boolean;
+  productos: ProductoDiagnostico[];
+  contadores: {
+    total: number;
+    alta_rotacion: number;
+    rotacion_media: number;
+    baja_rotacion: number;
+    problemas: number;
+    capital_total: number;
+  };
+  dias: number;
+}
+
 export const productoService = {
   /**
    * Obtener todos los productos
@@ -179,6 +209,15 @@ export const productoService = {
   /**
    * Obtener estadísticas de productos
    */
+  diagnostico: async (id_empresa: number, dias?: number): Promise<DiagnosticoResponse> => {
+    try {
+      const response = await api.get('/productos/diagnostico', { params: { id_empresa, dias: dias || 30 } });
+      return response.data;
+    } catch (error: any) {
+      throw error.response?.data || { error: true, mensaje: 'Error al obtener diagnóstico' };
+    }
+  },
+
   estadisticas: async (id_empresa: number): Promise<{
     error: boolean;
     estadisticas: {

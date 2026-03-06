@@ -740,9 +740,9 @@ class EmpresaController extends Controller
                 ], 400);
             }
 
-            // Validar token con el CRM
+            // Consultar plan completo desde el CRM
             $crmService = new CRMValidationService();
-            $validacion = $crmService->validarToken($empresa->token_crm);
+            $validacion = $crmService->consultarPlan($empresa->token_crm);
 
             if (!$validacion['valido']) {
                 return response()->json([
@@ -751,24 +751,23 @@ class EmpresaController extends Controller
                 ], 400);
             }
 
-            // Actualizar datos de la empresa con información del CRM
             $datosCliente = $validacion['cliente'];
             $datosSuscripcion = $validacion['suscripcion'];
+            $datosPlan = $validacion['plan'];
+
+            // Obtener módulos según el plan
+            $modulos = $crmService->obtenerModulosPorPlan($datosPlan['nombre'] ?? '');
 
             $empresa->update([
-                'nombre_empresa' => $datosCliente['empresa'],
-                'nit_empresa' => $datosCliente['nit'],
-                'telefono_empresa' => $datosCliente['telefono'] ?? $empresa->telefono_empresa,
-                'email_empresa' => $datosCliente['email'] ?? $empresa->email_empresa,
-                'id_cliente_crm' => $datosCliente['id'],
-                'plan_actual' => $datosSuscripcion['plan'],
+                'nombre_empresa' => $datosCliente['empresa'] ?? $empresa->nombre_empresa,
+                'nit_empresa' => $datosCliente['nit'] ?? $empresa->nit_empresa,
+                'plan_actual' => $datosPlan['nombre'],
                 'fecha_vencimiento_plan' => $datosSuscripcion['fecha_vencimiento'],
-                'estado_suscripcion' => $datosSuscripcion['estado'],
-                'modulos_habilitados' => $crmService->obtenerModulosPorPlan($datosSuscripcion['plan']),
+                'estado_suscripcion' => $datosSuscripcion['estado'] === 'activa' ? 'activo' : $datosSuscripcion['estado'],
+                'modulos_habilitados' => $modulos,
                 'ultima_validacion_crm' => Carbon::now()
             ]);
 
-            // Recargar la empresa para obtener los datos actualizados
             $empresa->refresh();
 
             return response()->json([
@@ -784,7 +783,8 @@ class EmpresaController extends Controller
                     'modulos_habilitados' => $empresa->modulos_habilitados,
                     'ultima_validacion_crm' => $empresa->ultima_validacion_crm,
                     'dias_restantes' => $datosSuscripcion['dias_restantes'] ?? null
-                ]
+                ],
+                'plan' => $datosPlan
             ]);
         } catch (\Exception $e) {
             return response()->json([

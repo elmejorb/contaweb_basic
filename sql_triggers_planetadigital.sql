@@ -549,16 +549,301 @@ BEGIN
     END IF;
 END;;
 
+-- ============================================================
+-- 7. TRIGGERS PARA tblventas (INSERT, UPDATE, DELETE)
+--    Registran cambios para sincronizacion + actualizan saldo_cliente
+-- ============================================================
+
+DROP TRIGGER IF EXISTS trg_ventas_after_insert;;
+CREATE TRIGGER trg_ventas_after_insert
+AFTER INSERT ON tblventas
+FOR EACH ROW
+BEGIN
+    DECLARE v_saldo_total DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_nombre_cliente VARCHAR(100) DEFAULT '';
+    DECLARE v_utilidad DECIMAL(18,2) DEFAULT 0;
+
+    -- Calcular utilidad desde detalles (en INSERT normalmente aun no hay detalles, sera 0)
+    SELECT COALESCE(SUM(ROUND((d.PrecioV - d.PrecioC) / (1 + COALESCE(d.IVA, 0) / 100) * (d.Cantidad - d.Dev), 2)), 0)
+    INTO v_utilidad
+    FROM tbldetalle_venta d WHERE d.Factura_N = NEW.Factura_N;
+
+    -- Registrar el cambio de la venta
+    INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+    VALUES (
+        'tblventas',
+        NEW.Factura_N,
+        'INSERT',
+        JSON_OBJECT(
+            'Factura_N', NEW.Factura_N,
+            'N_Mes', NEW.N_Mes,
+            'anio', NEW.anio,
+            'Fecha', NEW.Fecha,
+            'Tipo', NEW.Tipo,
+            'Dias', NEW.Dias,
+            'CodigoCli', NEW.CodigoCli,
+            'A_nombre', NEW.A_nombre,
+            'Identificacion', NEW.Identificacion,
+            'Direccion', NEW.Direccion,
+            'Telefono', NEW.Telefono,
+            'Impuesto', NEW.Impuesto,
+            'Descuento', NEW.Descuento,
+            'Flete', NEW.Flete,
+            'Total', NEW.Total,
+            'Saldo', NEW.Saldo,
+            'EstadoPedido', NEW.EstadoPedido,
+            'Comentario', NEW.Comentario,
+            'EstadoFact', NEW.EstadoFact,
+            'Pago', NEW.Pago,
+            'Cambio', NEW.Cambio,
+            'Hora', NEW.Hora,
+            'Id_Usuario', NEW.Id_Usuario,
+            'Abono', NEW.Abono,
+            'pagada', NEW.pagada,
+            'CodigoEmp', NEW.CodigoEmp,
+            'id_mediopago', NEW.id_mediopago,
+            'efectivo', NEW.efectivo,
+            'valorpagado1', NEW.valorpagado1,
+            'enviada_dian', NEW.enviada_dian,
+            'fecha_envio_dian', NEW.fecha_envio_dian,
+            'cufe', NEW.cufe,
+            'utilidad', v_utilidad
+        )
+    );
+
+    -- Registrar actualizacion del saldo del cliente (ventas a credito)
+    IF NEW.CodigoCli IS NOT NULL AND NEW.CodigoCli > 0 THEN
+        SELECT IFNULL(SaldoTotal, 0), IFNULL(Cliente, '')
+        INTO v_saldo_total, v_nombre_cliente
+        FROM vw_saldos_por_cliente
+        WHERE CodigoCli = NEW.CodigoCli
+        LIMIT 1;
+
+        INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+        VALUES (
+            'saldo_cliente',
+            NEW.CodigoCli,
+            'UPDATE',
+            JSON_OBJECT(
+                'CodigoCli', NEW.CodigoCli,
+                'Cliente', v_nombre_cliente,
+                'SaldoTotal', v_saldo_total,
+                'Origen', 'venta_insert',
+                'Factura_N', NEW.Factura_N
+            )
+        );
+    END IF;
+END;;
+
+DROP TRIGGER IF EXISTS trg_ventas_after_update;;
+CREATE TRIGGER trg_ventas_after_update
+AFTER UPDATE ON tblventas
+FOR EACH ROW
+BEGIN
+    DECLARE v_saldo_total DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_nombre_cliente VARCHAR(100) DEFAULT '';
+    DECLARE v_utilidad DECIMAL(18,2) DEFAULT 0;
+
+    -- Calcular utilidad desde detalles (descontando IVA)
+    SELECT COALESCE(SUM(ROUND((d.PrecioV - d.PrecioC) / (1 + COALESCE(d.IVA, 0) / 100) * (d.Cantidad - d.Dev), 2)), 0)
+    INTO v_utilidad
+    FROM tbldetalle_venta d WHERE d.Factura_N = NEW.Factura_N;
+
+    -- Registrar el cambio de la venta
+    INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+    VALUES (
+        'tblventas',
+        NEW.Factura_N,
+        'UPDATE',
+        JSON_OBJECT(
+            'Factura_N', NEW.Factura_N,
+            'N_Mes', NEW.N_Mes,
+            'anio', NEW.anio,
+            'Fecha', NEW.Fecha,
+            'Tipo', NEW.Tipo,
+            'Dias', NEW.Dias,
+            'CodigoCli', NEW.CodigoCli,
+            'A_nombre', NEW.A_nombre,
+            'Identificacion', NEW.Identificacion,
+            'Direccion', NEW.Direccion,
+            'Telefono', NEW.Telefono,
+            'Impuesto', NEW.Impuesto,
+            'Descuento', NEW.Descuento,
+            'Flete', NEW.Flete,
+            'Total', NEW.Total,
+            'Saldo', NEW.Saldo,
+            'EstadoPedido', NEW.EstadoPedido,
+            'Comentario', NEW.Comentario,
+            'EstadoFact', NEW.EstadoFact,
+            'Pago', NEW.Pago,
+            'Cambio', NEW.Cambio,
+            'Hora', NEW.Hora,
+            'Id_Usuario', NEW.Id_Usuario,
+            'Abono', NEW.Abono,
+            'pagada', NEW.pagada,
+            'CodigoEmp', NEW.CodigoEmp,
+            'id_mediopago', NEW.id_mediopago,
+            'efectivo', NEW.efectivo,
+            'valorpagado1', NEW.valorpagado1,
+            'enviada_dian', NEW.enviada_dian,
+            'fecha_envio_dian', NEW.fecha_envio_dian,
+            'cufe', NEW.cufe,
+            'utilidad', v_utilidad
+        )
+    );
+
+    -- Registrar actualizacion del saldo del cliente
+    IF NEW.CodigoCli IS NOT NULL AND NEW.CodigoCli > 0 THEN
+        SELECT IFNULL(SaldoTotal, 0), IFNULL(Cliente, '')
+        INTO v_saldo_total, v_nombre_cliente
+        FROM vw_saldos_por_cliente
+        WHERE CodigoCli = NEW.CodigoCli
+        LIMIT 1;
+
+        INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+        VALUES (
+            'saldo_cliente',
+            NEW.CodigoCli,
+            'UPDATE',
+            JSON_OBJECT(
+                'CodigoCli', NEW.CodigoCli,
+                'Cliente', v_nombre_cliente,
+                'SaldoTotal', v_saldo_total,
+                'Origen', 'venta_update',
+                'Factura_N', NEW.Factura_N
+            )
+        );
+    END IF;
+END;;
+
+DROP TRIGGER IF EXISTS trg_ventas_after_delete;;
+CREATE TRIGGER trg_ventas_after_delete
+AFTER DELETE ON tblventas
+FOR EACH ROW
+BEGIN
+    DECLARE v_saldo_total DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_nombre_cliente VARCHAR(100) DEFAULT '';
+
+    -- Registrar eliminacion de la venta
+    INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+    VALUES (
+        'tblventas',
+        OLD.Factura_N,
+        'DELETE',
+        JSON_OBJECT(
+            'Factura_N', OLD.Factura_N,
+            'Fecha', OLD.Fecha,
+            'CodigoCli', OLD.CodigoCli,
+            'Total', OLD.Total
+        )
+    );
+
+    -- Registrar actualizacion del saldo del cliente
+    IF OLD.CodigoCli IS NOT NULL AND OLD.CodigoCli > 0 THEN
+        SELECT IFNULL(SaldoTotal, 0), IFNULL(Cliente, '')
+        INTO v_saldo_total, v_nombre_cliente
+        FROM vw_saldos_por_cliente
+        WHERE CodigoCli = OLD.CodigoCli
+        LIMIT 1;
+
+        INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+        VALUES (
+            'saldo_cliente',
+            OLD.CodigoCli,
+            'UPDATE',
+            JSON_OBJECT(
+                'CodigoCli', OLD.CodigoCli,
+                'Cliente', v_nombre_cliente,
+                'SaldoTotal', v_saldo_total,
+                'Origen', 'venta_delete',
+                'Factura_N', OLD.Factura_N
+            )
+        );
+    END IF;
+END;;
+
+-- ============================================================
+-- 8. TRIGGER PARA tbldetalle_venta (AFTER INSERT)
+--    Recalcula utilidad de la venta padre y registra actualizacion
+--    Esto es necesario porque al INSERT en tblventas los detalles aun no existen
+-- ============================================================
+
+DROP TRIGGER IF EXISTS trg_detalle_venta_after_insert;;
+CREATE TRIGGER trg_detalle_venta_after_insert
+AFTER INSERT ON tbldetalle_venta
+FOR EACH ROW
+BEGIN
+    DECLARE v_utilidad DECIMAL(18,2) DEFAULT 0;
+    DECLARE v_total DECIMAL(19,4) DEFAULT 0;
+    DECLARE v_fecha DATETIME;
+    DECLARE v_tipo VARCHAR(8);
+    DECLARE v_existe INT DEFAULT 0;
+
+    -- Verificar que la venta existe
+    SELECT COUNT(*), Total, Fecha, Tipo
+    INTO v_existe, v_total, v_fecha, v_tipo
+    FROM tblventas WHERE Factura_N = NEW.Factura_N;
+
+    IF v_existe > 0 THEN
+        -- Calcular utilidad total de la venta (descontando IVA)
+        SELECT COALESCE(SUM(ROUND((d.PrecioV - d.PrecioC) / (1 + COALESCE(d.IVA, 0) / 100) * (d.Cantidad - d.Dev), 2)), 0)
+        INTO v_utilidad
+        FROM tbldetalle_venta d WHERE d.Factura_N = NEW.Factura_N;
+
+        -- Registrar actualizacion de utilidad para sincronizacion
+        INSERT INTO tbl_cambios_sincronizar (tabla_nombre, registro_id, operacion, datos_json)
+        VALUES (
+            'venta_utilidad',
+            NEW.Factura_N,
+            'UPDATE',
+            JSON_OBJECT(
+                'Factura_N', NEW.Factura_N,
+                'utilidad', v_utilidad,
+                'Total', v_total,
+                'Fecha', v_fecha,
+                'Tipo', v_tipo
+            )
+        );
+    END IF;
+END;;
+
 DELIMITER ;
+
+-- ============================================================
+-- VISTA: vw_utilidad_ventas
+-- Calcula la utilidad neta por factura descontando IVA
+-- Formula: (PrecioV - PrecioC) / (1 + IVA/100) * (Cantidad - Dev)
+-- Funciona correctamente con y sin IVA (cuando IVA=0, divisor=1)
+-- ============================================================
+
+DROP VIEW IF EXISTS vw_utilidad_ventas;
+
+CREATE VIEW vw_utilidad_ventas AS
+SELECT
+    v.Factura_N,
+    v.Fecha,
+    v.CodigoCli,
+    v.Total,
+    v.Tipo,
+    v.CodigoEmp,
+    COALESCE(SUM(
+        ROUND((d.PrecioV - d.PrecioC) / (1 + COALESCE(d.IVA, 0) / 100) * (d.Cantidad - d.Dev), 2)
+    ), 0) AS utilidad
+FROM tblventas v
+LEFT JOIN tbldetalle_venta d ON v.Factura_N = d.Factura_N
+GROUP BY v.Factura_N, v.Fecha, v.CodigoCli, v.Total, v.Tipo, v.CodigoEmp;
 
 -- ============================================================
 -- RESUMEN:
 -- - 1 tabla creada: tbl_cambios_sincronizar
--- - 15 triggers creados:
---   * tblarticulos:   INSERT, UPDATE, DELETE (3)
---   * tblcategoria:   INSERT, UPDATE, DELETE (3)
---   * tblclientes:    INSERT, UPDATE, DELETE (3)
---   * tblcontrolcaja: INSERT, UPDATE, DELETE (3)
---   * tblpagos:       INSERT, UPDATE, DELETE (3)
+-- - 19 triggers creados:
+--   * tblarticulos:      INSERT, UPDATE, DELETE (3)
+--   * tblcategoria:      INSERT, UPDATE, DELETE (3)
+--   * tblclientes:       INSERT, UPDATE, DELETE (3)
+--   * tblcontrolcaja:    INSERT, UPDATE, DELETE (3)
+--   * tblpagos:          INSERT, UPDATE, DELETE (3) + saldo_cliente
+--   * tblventas:         INSERT, UPDATE, DELETE (3) + saldo_cliente + utilidad
+--   * tbldetalle_venta:  INSERT (1) - recalcula utilidad de la venta
+-- - 1 vista creada: vw_utilidad_ventas (utilidad neta por factura)
 -- - Prerequisito: vista vw_saldos_por_cliente (ya existe)
 -- ============================================================

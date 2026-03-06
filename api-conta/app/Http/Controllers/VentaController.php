@@ -527,6 +527,378 @@ class VentaController extends Controller
     }
 
     /**
+     * Reporte mensual detallado
+     * Params: id_empresa, anio, mes
+     */
+    public function reporteMensual(Request $request)
+    {
+        try {
+            $empresaId = $request->input('id_empresa');
+            if (!$empresaId) {
+                return response()->json(['error' => true, 'mensaje' => 'Debe proporcionar id_empresa'], 400);
+            }
+
+            $anio = $request->input('anio', date('Y'));
+            $mes = $request->input('mes', date('n'));
+
+            // Ventas del mes agrupadas por día
+            $ventasPorDia = Venta::where('id_empresa', $empresaId)
+                ->whereYear('fecha_venta', $anio)
+                ->whereMonth('fecha_venta', $mes)
+                ->selectRaw("
+                    DATE(fecha_venta) as fecha,
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as total,
+                    COALESCE(SUM(CASE WHEN forma_pago = 'contado' THEN total ELSE 0 END), 0) as contado,
+                    COALESCE(SUM(CASE WHEN forma_pago = 'credito' THEN total ELSE 0 END), 0) as credito,
+                    COALESCE(SUM(t_utilidad_vent), 0) as utilidad
+                ")
+                ->groupBy(DB::raw('DATE(fecha_venta)'))
+                ->orderBy('fecha')
+                ->get();
+
+            // Totales del mes
+            $totalMes = Venta::where('id_empresa', $empresaId)
+                ->whereYear('fecha_venta', $anio)
+                ->whereMonth('fecha_venta', $mes)
+                ->selectRaw("
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as total,
+                    COALESCE(SUM(CASE WHEN forma_pago = 'contado' THEN total ELSE 0 END), 0) as contado,
+                    COALESCE(SUM(CASE WHEN forma_pago = 'credito' THEN total ELSE 0 END), 0) as credito,
+                    COALESCE(SUM(t_utilidad_vent), 0) as utilidad,
+                    COALESCE(SUM(total_impuestos), 0) as impuestos,
+                    COALESCE(SUM(descuento), 0) as descuentos
+                ")
+                ->first();
+
+            // Top 10 clientes del mes
+            $topClientes = Venta::where('ventas.id_empresa', $empresaId)
+                ->whereYear('fecha_venta', $anio)
+                ->whereMonth('fecha_venta', $mes)
+                ->join('clientes', 'ventas.id_cliente', '=', 'clientes.id_cliente')
+                ->selectRaw("
+                    clientes.nombre_razon_social as cliente,
+                    COUNT(*) as cantidad_ventas,
+                    COALESCE(SUM(ventas.total), 0) as total
+                ")
+                ->groupBy('clientes.id_cliente', 'clientes.nombre_razon_social')
+                ->orderBy('total', 'DESC')
+                ->limit(10)
+                ->get();
+
+            // Totales del mes anterior (para comparación)
+            $mesAnterior = $mes - 1;
+            $anioAnterior = $anio;
+            if ($mesAnterior < 1) {
+                $mesAnterior = 12;
+                $anioAnterior = $anio - 1;
+            }
+
+            $totalMesAnterior = Venta::where('id_empresa', $empresaId)
+                ->whereYear('fecha_venta', $anioAnterior)
+                ->whereMonth('fecha_venta', $mesAnterior)
+                ->selectRaw("
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as total,
+                    COALESCE(SUM(t_utilidad_vent), 0) as utilidad
+                ")
+                ->first();
+
+            // Resumen por forma de pago
+            $porFormaPago = Venta::where('id_empresa', $empresaId)
+                ->whereYear('fecha_venta', $anio)
+                ->whereMonth('fecha_venta', $mes)
+                ->selectRaw("
+                    forma_pago,
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as total
+                ")
+                ->groupBy('forma_pago')
+                ->orderBy('total', 'DESC')
+                ->get();
+
+            return response()->json([
+                'error' => false,
+                'anio' => (int) $anio,
+                'mes' => (int) $mes,
+                'ventas_por_dia' => $ventasPorDia,
+                'total_mes' => [
+                    'cantidad' => (int) $totalMes->cantidad,
+                    'total' => floatval($totalMes->total),
+                    'contado' => floatval($totalMes->contado),
+                    'credito' => floatval($totalMes->credito),
+                    'utilidad' => floatval($totalMes->utilidad),
+                    'impuestos' => floatval($totalMes->impuestos),
+                    'descuentos' => floatval($totalMes->descuentos),
+                ],
+                'mes_anterior' => [
+                    'cantidad' => (int) ($totalMesAnterior->cantidad ?? 0),
+                    'total' => floatval($totalMesAnterior->total ?? 0),
+                    'utilidad' => floatval($totalMesAnterior->utilidad ?? 0),
+                ],
+                'top_clientes' => $topClientes,
+                'por_forma_pago' => $porFormaPago,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'mensaje' => 'Error al generar reporte: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Ranking de clientes por ventas
+     * Params: id_empresa, dias (default 90)
+     */
+    public function rankingClientes(Request $request)
+    {
+        try {
+            $empresaId = $request->input('id_empresa');
+            if (!$empresaId) {
+                return response()->json(['error' => true, 'mensaje' => 'Debe proporcionar id_empresa'], 400);
+            }
+
+            $dias = $request->input('dias', 90);
+            $fechaDesde = \Carbon\Carbon::now()->subDays($dias)->format('Y-m-d');
+            $hoy = date('Y-m-d');
+
+            // Top clientes en el periodo
+            $topClientes = DB::select("
+                SELECT
+                    c.id_cliente,
+                    c.nombre_razon_social AS nombre,
+                    c.numero_documento AS documento,
+                    COUNT(*) AS cantidad_ventas,
+                    COALESCE(SUM(v.total), 0) AS total_compras,
+                    COALESCE(SUM(v.t_utilidad_vent), 0) AS utilidad_generada,
+                    ROUND(COALESCE(SUM(v.total), 0) / GREATEST(COUNT(*), 1), 2) AS ticket_promedio,
+                    MAX(v.fecha_venta) AS ultima_compra,
+                    DATEDIFF(?, MAX(v.fecha_venta)) AS dias_sin_comprar,
+                    COALESCE(SUM(CASE WHEN v.forma_pago = 'contado' THEN v.total ELSE 0 END), 0) AS total_contado,
+                    COALESCE(SUM(CASE WHEN v.forma_pago = 'credito' THEN v.total ELSE 0 END), 0) AS total_credito
+                FROM ventas v
+                INNER JOIN clientes c ON c.id_cliente = v.id_cliente
+                WHERE v.id_empresa = ?
+                  AND v.fecha_venta >= ?
+                  AND v.id_cliente IS NOT NULL
+                GROUP BY c.id_cliente, c.nombre_razon_social, c.numero_documento
+                ORDER BY total_compras DESC
+                LIMIT 50
+            ", [$hoy, $empresaId, $fechaDesde]);
+
+            // Clientes que dejaron de comprar (compraron antes del periodo pero no durante)
+            $clientesInactivos = DB::select("
+                SELECT
+                    c.id_cliente,
+                    c.nombre_razon_social AS nombre,
+                    c.numero_documento AS documento,
+                    COALESCE(SUM(v.total), 0) AS total_historico,
+                    MAX(v.fecha_venta) AS ultima_compra,
+                    DATEDIFF(?, MAX(v.fecha_venta)) AS dias_sin_comprar
+                FROM ventas v
+                INNER JOIN clientes c ON c.id_cliente = v.id_cliente
+                WHERE v.id_empresa = ?
+                  AND v.id_cliente IS NOT NULL
+                  AND v.id_cliente NOT IN (
+                      SELECT DISTINCT id_cliente FROM ventas
+                      WHERE id_empresa = ? AND fecha_venta >= ? AND id_cliente IS NOT NULL
+                  )
+                GROUP BY c.id_cliente, c.nombre_razon_social, c.numero_documento
+                ORDER BY total_historico DESC
+                LIMIT 20
+            ", [$hoy, $empresaId, $empresaId, $fechaDesde]);
+
+            // Resumen general
+            $resumen = DB::selectOne("
+                SELECT
+                    COUNT(DISTINCT v.id_cliente) AS clientes_activos,
+                    COUNT(*) AS total_facturas,
+                    COALESCE(SUM(v.total), 0) AS total_vendido,
+                    ROUND(COALESCE(SUM(v.total), 0) / GREATEST(COUNT(*), 1), 2) AS ticket_promedio
+                FROM ventas v
+                WHERE v.id_empresa = ?
+                  AND v.fecha_venta >= ?
+                  AND v.id_cliente IS NOT NULL
+            ", [$empresaId, $fechaDesde]);
+
+            // Contar clientes inactivos
+            $totalInactivos = count($clientesInactivos);
+
+            return response()->json([
+                'error' => false,
+                'dias' => $dias,
+                'top_clientes' => $topClientes,
+                'clientes_inactivos' => $clientesInactivos,
+                'resumen' => [
+                    'total_clientes_activos' => (int) ($resumen->clientes_activos ?? 0),
+                    'total_clientes_inactivos' => $totalInactivos,
+                    'total_ventas_periodo' => (int) ($resumen->total_facturas ?? 0),
+                    'total_monto_periodo' => floatval($resumen->total_vendido ?? 0),
+                    'ticket_promedio_general' => floatval($resumen->ticket_promedio ?? 0),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'mensaje' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Comparativo de ventas entre periodos + ventas por día de semana
+     * Params: id_empresa, anio (default actual), mes (default actual)
+     */
+    public function comparativo(Request $request)
+    {
+        try {
+            $empresaId = $request->input('id_empresa');
+            if (!$empresaId) {
+                return response()->json(['error' => true, 'mensaje' => 'Debe proporcionar id_empresa'], 400);
+            }
+
+            $anio = (int) $request->input('anio', date('Y'));
+            $mes = (int) $request->input('mes', date('n'));
+            $anioAnterior = $anio - 1;
+
+            // Mes anterior
+            $mesAnt = $mes - 1;
+            $anioMesAnt = $anio;
+            if ($mesAnt < 1) { $mesAnt = 12; $anioMesAnt = $anio - 1; }
+
+            // Helper para obtener totales de un mes
+            $getTotalesMes = function ($anioQ, $mesQ) use ($empresaId) {
+                return DB::selectOne("
+                    SELECT
+                        COUNT(*) AS cantidad,
+                        COALESCE(SUM(total), 0) AS total,
+                        COALESCE(SUM(t_utilidad_vent), 0) AS utilidad,
+                        COALESCE(SUM(CASE WHEN forma_pago = 'contado' THEN total ELSE 0 END), 0) AS contado,
+                        COALESCE(SUM(CASE WHEN forma_pago = 'credito' THEN total ELSE 0 END), 0) AS credito,
+                        COUNT(DISTINCT id_cliente) AS clientes
+                    FROM ventas
+                    WHERE id_empresa = ? AND YEAR(fecha_venta) = ? AND MONTH(fecha_venta) = ?
+                ", [$empresaId, $anioQ, $mesQ]);
+            };
+
+            $mesActual = $getTotalesMes($anio, $mes);
+            $mesAnterior = $getTotalesMes($anioMesAnt, $mesAnt);
+            $mismoMesAnioAnt = $getTotalesMes($anioAnterior, $mes);
+
+            // Totales anuales
+            $getTotalesAnio = function ($anioQ) use ($empresaId) {
+                return DB::selectOne("
+                    SELECT
+                        COUNT(*) AS cantidad,
+                        COALESCE(SUM(total), 0) AS total,
+                        COALESCE(SUM(t_utilidad_vent), 0) AS utilidad,
+                        COALESCE(SUM(CASE WHEN forma_pago = 'contado' THEN total ELSE 0 END), 0) AS contado,
+                        COALESCE(SUM(CASE WHEN forma_pago = 'credito' THEN total ELSE 0 END), 0) AS credito
+                    FROM ventas
+                    WHERE id_empresa = ? AND YEAR(fecha_venta) = ?
+                ", [$empresaId, $anioQ]);
+            };
+
+            $totAnioActual = $getTotalesAnio($anio);
+            $totAnioAnterior = $getTotalesAnio($anioAnterior);
+
+            // Ventas mensuales para gráfico comparativo (12 meses año actual vs anterior)
+            $nombresMeses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            $mensuales = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $act = $getTotalesMes($anio, $m);
+                $ant = $getTotalesMes($anioAnterior, $m);
+                $mensuales[] = [
+                    'mes' => $m,
+                    'mes_nombre' => $nombresMeses[$m],
+                    'total_actual' => floatval($act->total ?? 0),
+                    'total_anterior' => floatval($ant->total ?? 0),
+                    'utilidad_actual' => floatval($act->utilidad ?? 0),
+                    'cantidad_actual' => (int) ($act->cantidad ?? 0),
+                ];
+            }
+
+            // Ventas por día de la semana (últimos 90 días)
+            $hace90 = \Carbon\Carbon::now()->subDays(90)->format('Y-m-d');
+            $porDiaSemana = DB::select("
+                SELECT
+                    DAYOFWEEK(fecha_venta) AS dia_num,
+                    CASE DAYOFWEEK(fecha_venta)
+                        WHEN 1 THEN 'Domingo'
+                        WHEN 2 THEN 'Lunes'
+                        WHEN 3 THEN 'Martes'
+                        WHEN 4 THEN 'Miércoles'
+                        WHEN 5 THEN 'Jueves'
+                        WHEN 6 THEN 'Viernes'
+                        WHEN 7 THEN 'Sábado'
+                    END AS dia,
+                    COUNT(*) AS cantidad,
+                    COALESCE(SUM(total), 0) AS total,
+                    ROUND(COALESCE(SUM(total), 0) / GREATEST(COUNT(DISTINCT DATE(fecha_venta)), 1), 2) AS promedio_diario
+                FROM ventas
+                WHERE id_empresa = ? AND fecha_venta >= ?
+                GROUP BY dia_num, dia
+                ORDER BY dia_num
+            ", [$empresaId, $hace90]);
+
+            // Ventas por forma de pago (mes actual)
+            $porFormaPago = DB::select("
+                SELECT
+                    forma_pago,
+                    COUNT(*) AS cantidad,
+                    COALESCE(SUM(total), 0) AS total
+                FROM ventas
+                WHERE id_empresa = ? AND YEAR(fecha_venta) = ? AND MONTH(fecha_venta) = ?
+                GROUP BY forma_pago
+                ORDER BY total DESC
+            ", [$empresaId, $anio, $mes]);
+
+            return response()->json([
+                'error' => false,
+                'anio' => $anio,
+                'mes' => $mes,
+                'mes_actual' => [
+                    'cantidad' => (int) ($mesActual->cantidad ?? 0),
+                    'total' => floatval($mesActual->total ?? 0),
+                    'utilidad' => floatval($mesActual->utilidad ?? 0),
+                    'contado' => floatval($mesActual->contado ?? 0),
+                    'credito' => floatval($mesActual->credito ?? 0),
+                    'clientes' => (int) ($mesActual->clientes ?? 0),
+                ],
+                'mes_anterior' => [
+                    'cantidad' => (int) ($mesAnterior->cantidad ?? 0),
+                    'total' => floatval($mesAnterior->total ?? 0),
+                    'utilidad' => floatval($mesAnterior->utilidad ?? 0),
+                    'contado' => floatval($mesAnterior->contado ?? 0),
+                    'credito' => floatval($mesAnterior->credito ?? 0),
+                ],
+                'mismo_mes_anio_anterior' => [
+                    'cantidad' => (int) ($mismoMesAnioAnt->cantidad ?? 0),
+                    'total' => floatval($mismoMesAnioAnt->total ?? 0),
+                    'utilidad' => floatval($mismoMesAnioAnt->utilidad ?? 0),
+                    'contado' => floatval($mismoMesAnioAnt->contado ?? 0),
+                    'credito' => floatval($mismoMesAnioAnt->credito ?? 0),
+                ],
+                'anio_actual' => [
+                    'cantidad' => (int) ($totAnioActual->cantidad ?? 0),
+                    'total' => floatval($totAnioActual->total ?? 0),
+                    'utilidad' => floatval($totAnioActual->utilidad ?? 0),
+                    'contado' => floatval($totAnioActual->contado ?? 0),
+                    'credito' => floatval($totAnioActual->credito ?? 0),
+                ],
+                'anio_anterior' => [
+                    'cantidad' => (int) ($totAnioAnterior->cantidad ?? 0),
+                    'total' => floatval($totAnioAnterior->total ?? 0),
+                    'utilidad' => floatval($totAnioAnterior->utilidad ?? 0),
+                    'contado' => floatval($totAnioAnterior->contado ?? 0),
+                    'credito' => floatval($totAnioAnterior->credito ?? 0),
+                ],
+                'mensuales' => $mensuales,
+                'por_dia_semana' => $porDiaSemana,
+                'por_forma_pago' => $porFormaPago,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => true, 'mensaje' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Mapear forma de pago desde VB6
      */
     private function mapearFormaPago($tipo, $idMedioPago)

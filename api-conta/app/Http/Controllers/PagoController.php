@@ -36,10 +36,10 @@ class PagoController extends Controller
             }
 
             if ($fechaInicio) {
-                $query->where('fecha', '>=', $fechaInicio);
+                $query->whereDate('fecha', '>=', $fechaInicio);
             }
             if ($fechaFin) {
-                $query->where('fecha', '<=', $fechaFin);
+                $query->whereDate('fecha', '<=', $fechaFin);
             }
 
             if ($buscar) {

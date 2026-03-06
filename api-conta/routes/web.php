@@ -134,6 +134,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         $router->get('/productos', 'ProductoController@index');
         $router->post('/productos', 'ProductoController@store');
         $router->get('/productos/estadisticas', 'ProductoController@estadisticas');
+        $router->get('/productos/diagnostico', 'ProductoController@diagnostico');
         $router->get('/productos/{id}', 'ProductoController@show');
         $router->put('/productos/{id}', 'ProductoController@update');
         $router->delete('/productos/{id}', 'ProductoController@destroy');
@@ -184,6 +185,9 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         // Rutas de Ventas
         $router->get('/ventas', 'VentaController@listar');
         $router->get('/ventas/resumen', 'VentaController@resumen');
+        $router->get('/ventas/reporte-mensual', 'VentaController@reporteMensual');
+        $router->get('/ventas/ranking-clientes', 'VentaController@rankingClientes');
+        $router->get('/ventas/comparativo', 'VentaController@comparativo');
 
         // Rutas de Pagos
         $router->get('/pagos', 'PagoController@listar');

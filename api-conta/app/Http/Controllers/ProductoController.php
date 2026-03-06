@@ -689,6 +689,170 @@ class ProductoController extends Controller
     }
 
     /**
+     * Diagnóstico de inventario (últimos 30 días)
+     * Analiza precios, márgenes y rotación de productos
+     */
+    public function diagnostico(Request $request)
+    {
+        try {
+            $id_empresa = $request->input('id_empresa');
+            $dias = $request->input('dias', 30);
+
+            if (!$id_empresa) {
+                return response()->json([
+                    'error' => true,
+                    'mensaje' => 'Debe proporcionar id_empresa'
+                ], 400);
+            }
+
+            $fechaDesde = \Carbon\Carbon::now()->subDays($dias)->format('Y-m-d');
+
+            // Obtener todos los productos activos con datos de venta en el periodo
+            $productos = DB::select("
+                SELECT
+                    p.id_producto,
+                    p.codigo_producto,
+                    p.nombre_producto,
+                    p.stock_actual AS existencia,
+                    p.precio_compra AS precio_costo,
+                    p.precio_venta,
+                    p.stock_minimo,
+                    p.es_servicio,
+                    COALESCE(ventas.unidades_vendidas, 0) AS unidades_vendidas,
+                    COALESCE(ventas.veces_vendido, 0) AS veces_vendido,
+                    COALESCE(ventas.total_vendido, 0) AS total_vendido
+                FROM productos p
+                LEFT JOIN (
+                    SELECT
+                        dv.id_producto,
+                        SUM(dv.cantidad - COALESCE(dv.cantidad_devolucion, 0)) AS unidades_vendidas,
+                        COUNT(DISTINCT dv.id_venta) AS veces_vendido,
+                        SUM(dv.total) AS total_vendido
+                    FROM detalles_venta dv
+                    INNER JOIN ventas v ON v.id_venta = dv.id_venta
+                    WHERE v.id_empresa = ?
+                      AND v.fecha_venta >= ?
+                      AND dv.id_producto IS NOT NULL
+                    GROUP BY dv.id_producto
+                ) ventas ON ventas.id_producto = p.id_producto
+                WHERE p.id_empresa = ?
+                  AND p.estado = 1
+                ORDER BY p.nombre_producto ASC
+            ", [$id_empresa, $fechaDesde, $id_empresa]);
+
+            $resultado = [];
+            $contadores = [
+                'total' => 0,
+                'alta_rotacion' => 0,
+                'rotacion_media' => 0,
+                'baja_rotacion' => 0,
+                'problemas' => 0,
+                'capital_total' => 0,
+            ];
+
+            foreach ($productos as $p) {
+                $precioCosto = floatval($p->precio_costo);
+                $precioVenta = floatval($p->precio_venta);
+                $existencia = intval($p->existencia);
+                $unidadesVendidas = floatval($p->unidades_vendidas);
+                $vecesVendido = intval($p->veces_vendido);
+                $capitalInvertido = $precioCosto * $existencia;
+
+                // Calcular margen %
+                $margen = 0;
+                if ($precioVenta > 0) {
+                    $margen = round((($precioVenta - $precioCosto) / $precioVenta) * 100, 2);
+                }
+
+                // Clasificar rotación
+                $rotacion = 'baja';
+                if ($vecesVendido >= 10) {
+                    $rotacion = 'alta';
+                    $contadores['alta_rotacion']++;
+                } elseif ($vecesVendido >= 3) {
+                    $rotacion = 'media';
+                    $contadores['rotacion_media']++;
+                } else {
+                    $contadores['baja_rotacion']++;
+                }
+
+                // Determinar diagnóstico
+                $diagnostico = '';
+                $tipo = 'ok'; // ok, warning, danger, info
+
+                if ($precioCosto <= 0 && !$p->es_servicio) {
+                    $diagnostico = 'Costo inválido';
+                    $tipo = 'danger';
+                    $contadores['problemas']++;
+                } elseif ($precioVenta <= $precioCosto && $precioCosto > 0) {
+                    $diagnostico = 'Precio ≤ Costo';
+                    $tipo = 'danger';
+                    $contadores['problemas']++;
+                } elseif ($margen > 80) {
+                    $diagnostico = 'Margen sospechoso';
+                    $tipo = 'warning';
+                    $contadores['problemas']++;
+                } elseif ($rotacion === 'alta' && $margen >= 20) {
+                    $diagnostico = 'Alta rot. / Buen margen';
+                    $tipo = 'success';
+                } elseif ($rotacion === 'alta' && $margen < 20) {
+                    $diagnostico = 'Alta rot. / Margen bajo - Ajustar';
+                    $tipo = 'warning';
+                    $contadores['problemas']++;
+                } elseif ($rotacion === 'media' && $margen >= 20) {
+                    $diagnostico = 'Rotación media / Aceptable';
+                    $tipo = 'info';
+                } elseif ($rotacion === 'media' && $margen < 20) {
+                    $diagnostico = 'Rotación media / Bajo';
+                    $tipo = 'warning';
+                    $contadores['problemas']++;
+                } elseif ($rotacion === 'baja' && $margen >= 20) {
+                    $diagnostico = 'Baja rot. / Aceptable';
+                    $tipo = 'info';
+                } else {
+                    $diagnostico = 'Baja rot. / Insuficiente';
+                    $tipo = 'danger';
+                    $contadores['problemas']++;
+                }
+
+                $contadores['total']++;
+                $contadores['capital_total'] += $capitalInvertido;
+
+                $resultado[] = [
+                    'id_producto' => $p->id_producto,
+                    'codigo' => $p->codigo_producto,
+                    'nombre' => $p->nombre_producto,
+                    'existencia' => $existencia,
+                    'precio_costo' => $precioCosto,
+                    'precio_venta' => $precioVenta,
+                    'margen' => $margen,
+                    'unidades_vendidas' => $unidadesVendidas,
+                    'veces_vendido' => $vecesVendido,
+                    'capital_invertido' => round($capitalInvertido, 2),
+                    'rotacion' => $rotacion,
+                    'diagnostico' => $diagnostico,
+                    'tipo' => $tipo,
+                ];
+            }
+
+            $contadores['capital_total'] = round($contadores['capital_total'], 2);
+
+            return response()->json([
+                'error' => false,
+                'productos' => $resultado,
+                'contadores' => $contadores,
+                'dias' => $dias,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'Error al generar diagnóstico: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Obtener estadísticas de productos
      */
     public function estadisticas(Request $request)
