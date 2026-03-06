@@ -1,0 +1,56 @@
+# === Carpetas excluidas ===
+vb6/
+api-conta-web5/
+.claude/
+.vscode/
+
+# === Node / Frontend ===
+frontend-conta/node_modules/
+frontend-conta/dist/
+frontend-conta/*.zip
+frontend-conta/nul
+
+# === PHP / API ===
+api-conta/vendor/
+api-conta/storage/logs/
+api-conta/storage/framework/cache/
+api-conta/storage/framework/sessions/
+api-conta/storage/framework/views/
+api-conta/*.zip
+api-conta/server.log
+api-conta/logs/
+api-conta/nul
+
+# === Archivos de entorno (credenciales) ===
+.env
+.env.local
+.env.production
+api-conta/.env
+frontend-conta/.env
+frontend-conta/.env.local
+frontend-conta/.env.production
+
+# === Sistema / IDE ===
+*.code-workspace
+nul
+.DS_Store
+Thumbs.db
+*.bak
+*.log
+
+# === Scripts temporales / de prueba ===
+api-conta/check_db_structure.php
+api-conta/generar_migraciones.php
+api-conta/sync-ejecutar.bat
+api-conta/sync-inicial.php
+api-conta/sync-selectivo.php
+api-conta/sync-service.php
+api-conta/test-sync-completo.php
+api-conta/test-sync.php
+api-conta/migraciones_generadas.txt
+
+# === Scripts temporales frontend ===
+frontend-conta/add_password_change.cjs
+frontend-conta/fix_profile.cjs
+frontend-conta/fix_profile.py
+frontend-conta/update_profile_photo.cjs

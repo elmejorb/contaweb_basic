@@ -1,0 +1,341 @@
+import React, { useState, FC } from 'react';
+import useAuth from '../../hooks/useAuth';
+import { 
+    UserIcon, BellIcon, LockClosedIcon, TrashIcon, CameraIcon, 
+    HashtagIcon, CalendarIcon, CheckCircleIcon, ShieldExclamationIcon,
+    ClockIcon, RefreshIcon, DownloadIcon, SearchIcon, MailIcon, TicketIcon,
+    ClipboardCheckIcon, ChevronDownIcon
+} from '../icons/IconComponents';
+
+interface PageProps {
+  setActivePage: (page: string) => void;
+}
+
+type ProfileTab = 'info' | 'activity' | 'notifications';
+
+const InformationTab: FC<{ user: any }> = ({ user }) => {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
+            {/* Left Column */}
+            <div className="lg:col-span-2 space-y-6">
+                {/* Personal Info Card */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Información Personal</h3>
+                    <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                        <div className="relative">
+                            <img src={user.avatarUrl} alt="Foto de Perfil" className="w-24 h-24 rounded-full object-cover ring-4 ring-white"/>
+                            <button className="absolute top-0 right-0 bg-red-100 text-red-600 p-1.5 rounded-full hover:bg-red-200 transition-colors">
+                                <TrashIcon className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-700">Foto de Perfil</p>
+                            <p className="text-sm text-gray-500">Formatos permitidos: JPG, PNG, GIF (máx. 5MB)</p>
+                            <button className="mt-2 flex items-center text-sm bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                                <CameraIcon className="w-5 h-5 mr-2" />
+                                Cambiar Foto
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mt-6 border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-gray-500">Nombre Completo</label>
+                            <p className="mt-1 px-3 py-2 bg-gray-50 border rounded-md text-gray-700">Administrador</p>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-500">Email</label>
+                            <p className="mt-1 px-3 py-2 bg-gray-50 border rounded-md text-gray-700">{user.email}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Security Card */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800">Seguridad</h3>
+                            <p className="text-sm text-gray-500 mt-1">Actualiza tu contraseña para mantener tu cuenta segura</p>
+                        </div>
+                        <button className="flex items-center text-sm bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                            <LockClosedIcon className="w-5 h-5 mr-2" />
+                            Cambiar Contraseña
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="lg:col-span-1 space-y-6">
+                {/* Account Details Card */}
+                <div className="bg-white rounded-lg shadow-sm p-6 space-y-4">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Detalles de Cuenta</h3>
+                    <div className="flex items-start">
+                        <UserIcon className="w-5 h-5 text-gray-400 mt-1 mr-3 shrink-0" />
+                        <div>
+                            <p className="text-sm text-gray-500">Rol</p>
+                            <span className="inline-block bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full">Super Admin</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start">
+                        <HashtagIcon className="w-5 h-5 text-gray-400 mt-1 mr-3 shrink-0" />
+                        <div>
+                            <p className="text-sm text-gray-500">ID de Usuario</p>
+                            <p className="font-mono text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">{user.userId}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start">
+                        <CalendarIcon className="w-5 h-5 text-gray-400 mt-1 mr-3 shrink-0" />
+                        <div>
+                            <p className="text-sm text-gray-500">Miembro desde</p>
+                            <p className="text-sm text-gray-700">{user.memberSince}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Account Status Card */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                     <h3 className="text-xl font-semibold text-gray-800 mb-4">Estado de Cuenta</h3>
+                     <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Estado</span>
+                            <span className="flex items-center text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded-full"><CheckCircleIcon className="w-4 h-4 mr-1"/>Activo</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Email verificado</span>
+                            <span className="flex items-center text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded-full"><CheckCircleIcon className="w-4 h-4 mr-1"/>Verificado</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-600">Autenticación 2FA</span>
+                            <span className="flex items-center text-xs font-semibold bg-red-100 text-red-800 px-2 py-1 rounded-full"><ShieldExclamationIcon className="w-4 h-4 mr-1"/>No configurada</span>
+                        </div>
+                     </div>
+                </div>
+
+                {/* Quick Actions Card */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">Acciones Rápidas</h3>
+                    <div className="space-y-2">
+                        <button className="w-full text-left flex items-center text-sm text-gray-700 p-2 rounded-lg hover:bg-gray-100">
+                           <BellIcon className="w-5 h-5 mr-3 text-gray-500"/> Notificaciones
+                        </button>
+                         <button className="w-full text-left flex items-center text-sm text-gray-700 p-2 rounded-lg hover:bg-gray-100">
+                           <ClockIcon className="w-5 h-5 mr-3 text-gray-500"/> Ver actividad
+                        </button>
+                         <button className="w-full text-left flex items-center text-sm text-gray-700 p-2 rounded-lg hover:bg-gray-100">
+                           <ShieldExclamationIcon className="w-5 h-5 mr-3 text-gray-500"/> Configurar 2FA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ActivityTab: FC = () => {
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800">Historial de Actividad</h3>
+                        <p className="text-sm text-gray-500 mt-1">0 registros encontrados</p>
+                    </div>
+                    <div className="flex items-center space-x-2 mt-4 md:mt-0">
+                         <button className="flex items-center text-sm bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                           <RefreshIcon className="w-5 h-5 mr-2" />
+                           Actualizar
+                        </button>
+                         <button className="flex items-center text-sm bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-3 rounded-lg hover:bg-gray-50 transition">
+                           <DownloadIcon className="w-5 h-5 mr-2" />
+                           Exportar
+                        </button>
+                    </div>
+                </div>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50">
+                    <div className="relative">
+                        <input type="text" placeholder="Buscar en historial..." className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                        <SearchIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <div className="relative">
+                        <select className="w-full appearance-none bg-white px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500">
+                            <option>Todos los tipos</option>
+                        </select>
+                        <ChevronDownIcon className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <div className="relative">
+                        <select className="w-full appearance-none bg-white px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500">
+                            <option>Todo el tiempo</option>
+                        </select>
+                         <ChevronDownIcon className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                </div>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <div className="inline-block p-4 bg-gray-100 rounded-full">
+                    <ClockIcon className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="mt-4 text-xl font-semibold text-gray-800">No hay actividad registrada</h3>
+                <p className="mt-2 text-gray-500">Tu actividad aparecerá aquí cuando comiences a usar el dashboard</p>
+            </div>
+        </div>
+    );
+};
+
+const ToggleSwitch: FC = () => {
+    const [isOn, setIsOn] = useState(true);
+    return (
+        <button
+            onClick={() => setIsOn(!isOn)}
+            className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 ${
+                isOn ? 'bg-violet-600' : 'bg-gray-200'
+            }`}
+        >
+            <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                isOn ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+        </button>
+    );
+};
+
+const NotificationsTab: FC = () => {
+    return (
+        <div className="space-y-6 animate-fade-in-up">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="text-xl font-semibold text-gray-800">Notificaciones</h3>
+                <p className="text-sm text-gray-500 mt-1">Personaliza cómo y cuándo recibes notificaciones</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <h4 className="font-semibold text-gray-800">Sobre las notificaciones</h4>
+                <p className="text-sm text-gray-500 mt-1">Las notificaciones te ayudan a mantenerte al día con la actividad del equipo. Puedes personalizar cada canal de forma independiente según tus preferencias.</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm divide-y">
+                {/* Email Notifications */}
+                <div className="p-6">
+                    <div className="flex justify-between items-start">
+                        <div className="flex items-start">
+                            <div className="p-3 bg-blue-100 rounded-lg mr-4">
+                                <MailIcon className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <div className="flex items-center">
+                                    <h4 className="font-semibold text-gray-800">Email</h4>
+                                    <span className="ml-2 bg-gray-800 text-white text-xs font-bold px-2 py-0.5 rounded-full">3 eventos</span>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-1">Recibe notificaciones en tu correo electrónico</p>
+                                <div className="mt-3 space-x-2">
+                                    <button className="text-sm font-semibold text-violet-600 hover:underline">Activar todos</button>
+                                    <button className="text-sm font-semibold text-gray-500 hover:underline">Desactivar todos</button>
+                                </div>
+                            </div>
+                        </div>
+                        <ToggleSwitch />
+                    </div>
+                </div>
+                 {/* Partidos Notifications */}
+                <div className="p-6">
+                     <div className="flex justify-between items-start">
+                        <div className="flex items-start">
+                            <div className="p-3 bg-orange-100 rounded-lg mr-4">
+                                <TicketIcon className="w-6 h-6 text-orange-600" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-gray-800">Partidos</h4>
+                                <p className="text-sm text-gray-500 mt-1">Recordatorios de partidos próximos y resultados</p>
+                                <div className="mt-2 flex items-center space-x-2">
+                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Partido en 1 hora</span>
+                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Resultado del partido</span>
+                                </div>
+                            </div>
+                        </div>
+                        <ToggleSwitch />
+                    </div>
+                </div>
+                 {/* Votaciones Notifications */}
+                <div className="p-6">
+                     <div className="flex justify-between items-start">
+                        <div className="flex items-start">
+                            <div className="p-3 bg-green-100 rounded-lg mr-4">
+                                <ClipboardCheckIcon className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-gray-800">Votaciones</h4>
+                                <p className="text-sm text-gray-500 mt-1">Votaciones activas y resultados</p>
+                                <div className="mt-2 flex items-center space-x-2">
+                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Votación iniciada</span>
+                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Resultados de votación</span>
+                                </div>
+                            </div>
+                        </div>
+                        <ToggleSwitch />
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+const ProfilePage: FC<PageProps> = () => {
+    const [activeTab, setActiveTab] = useState<ProfileTab>('info');
+    const { user } = useAuth(); 
+
+    const fullUser = {
+        ...user,
+        email: 'admin@cangrejeras.com',
+        userId: '#HKuvahGBO2ZwAS15eas9dj9ArB2a2',
+        memberSince: '2025-10-09T16:25:56.302Z',
+    };
+
+    const renderContent = () => {
+        switch(activeTab) {
+            case 'info':
+                return <InformationTab user={fullUser} />;
+            case 'activity':
+                return <ActivityTab />;
+            case 'notifications':
+                return <NotificationsTab />;
+            default:
+                return <InformationTab user={fullUser} />;
+        }
+    };
+    
+    const TabButton: FC<{ tabName: ProfileTab; label: string; icon: FC<{className?: string}> }> = ({ tabName, label, icon: Icon }) => (
+        <button
+          onClick={() => setActiveTab(tabName)}
+          className={`flex items-center justify-center w-full px-4 py-3 font-semibold text-sm rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ${
+            activeTab === tabName
+              ? 'bg-amber-400 text-amber-900 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Icon className="w-5 h-5 mr-2" />
+          {label}
+        </button>
+      );
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-800">Mi Perfil</h1>
+                <p className="mt-1 text-gray-500">Administra tu información personal y configuración de cuenta</p>
+            </div>
+            
+            <div className="bg-white rounded-lg shadow-sm p-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <TabButton tabName="info" label="Información" icon={UserIcon} />
+                    <TabButton tabName="activity" label="Actividad" icon={ClockIcon} />
+                    <TabButton tabName="notifications" label="Notificaciones" icon={BellIcon} />
+                </div>
+            </div>
+
+            <div className="mt-6">
+                {renderContent()}
+            </div>
+        </div>
+    );
+};
+
+export default ProfilePage;

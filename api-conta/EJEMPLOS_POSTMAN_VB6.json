@@ -1,0 +1,201 @@
+{
+  "info": {
+    "name": "Sincronización VB6 - ContaRs API",
+    "description": "Endpoints para sincronizar datos desde Visual Basic 6",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@empresa.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Sincronizar Categoría",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"codvb6\": \"CAT001\",\n  \"nombre_categoria\": \"Electrónica\",\n  \"descripcion_categoria\": \"Productos electrónicos y tecnología\",\n  \"estado\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/categoria",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "categoria"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Sincronizar Producto",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"codvb6\": \"PROD001\",\n  \"codigo_producto\": \"LAP-HP-001\",\n  \"nombre_producto\": \"Laptop HP Pavilion 15\",\n  \"descripcion_producto\": \"Laptop HP 15.6 pulgadas, Intel i5, 8GB RAM\",\n  \"precio_compra\": 500.00,\n  \"precio_venta\": 750.00,\n  \"precio_venta_2\": 700.00,\n  \"precio_venta_3\": 680.00,\n  \"precio_venta_4\": 650.00,\n  \"precio_minimo\": 600.00,\n  \"stock_actual\": 10,\n  \"stock_minimo\": 2,\n  \"unidad_medida\": \"NIU\",\n  \"maneja_inventario\": true,\n  \"estado\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/producto",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "producto"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Sincronizar Cliente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"codvb6\": \"CLI001\",\n  \"codigo_cliente\": \"C-001\",\n  \"nombre_razon_social\": \"Juan Pérez García\",\n  \"tipo_documento\": \"13\",\n  \"numero_documento\": \"1234567890\",\n  \"telefono\": \"3001234567\",\n  \"celular\": \"3109876543\",\n  \"email\": \"juan.perez@email.com\",\n  \"direccion\": \"Calle 123 #45-67\",\n  \"municipio\": \"Bogotá\",\n  \"departamento\": \"Cundinamarca\",\n  \"estado\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/cliente",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "cliente"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Sincronizar Proveedor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"codvb6\": \"PROV001\",\n  \"codigo_proveedor\": \"P-001\",\n  \"razon_social\": \"Distribuidora XYZ S.A.S.\",\n  \"nit\": \"900123456-1\",\n  \"telefono\": \"6011234567\",\n  \"email\": \"ventas@distribuidoraxyz.com\",\n  \"direccion\": \"Carrera 50 #30-20\",\n  \"contacto_nombres\": \"María\",\n  \"contacto_apellidos\": \"González\",\n  \"contacto_telefono\": \"3201234567\",\n  \"estado\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/proveedor",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "proveedor"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Sincronización Masiva (Lote)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"categorias\": [\n    {\n      \"codvb6\": \"CAT001\",\n      \"nombre_categoria\": \"Electrónica\",\n      \"descripcion_categoria\": \"Productos electrónicos\",\n      \"estado\": true\n    },\n    {\n      \"codvb6\": \"CAT002\",\n      \"nombre_categoria\": \"Ropa\",\n      \"descripcion_categoria\": \"Ropa y accesorios\",\n      \"estado\": true\n    },\n    {\n      \"codvb6\": \"CAT003\",\n      \"nombre_categoria\": \"Alimentos\",\n      \"descripcion_categoria\": \"Productos alimenticios\",\n      \"estado\": true\n    }\n  ],\n  \"productos\": [\n    {\n      \"codvb6\": \"PROD001\",\n      \"codigo_producto\": \"P-001\",\n      \"nombre_producto\": \"Laptop HP\",\n      \"precio_venta\": 750.00,\n      \"stock_actual\": 10,\n      \"estado\": true\n    },\n    {\n      \"codvb6\": \"PROD002\",\n      \"codigo_producto\": \"P-002\",\n      \"nombre_producto\": \"Mouse Inalámbrico\",\n      \"precio_venta\": 25.00,\n      \"stock_actual\": 50,\n      \"estado\": true\n    }\n  ],\n  \"clientes\": [\n    {\n      \"codvb6\": \"CLI001\",\n      \"nombre_razon_social\": \"Juan Pérez\",\n      \"numero_documento\": \"1234567890\",\n      \"telefono\": \"3001234567\",\n      \"estado\": true\n    },\n    {\n      \"codvb6\": \"CLI002\",\n      \"nombre_razon_social\": \"María González\",\n      \"numero_documento\": \"9876543210\",\n      \"telefono\": \"3109876543\",\n      \"estado\": true\n    }\n  ],\n  \"proveedores\": [\n    {\n      \"codvb6\": \"PROV001\",\n      \"razon_social\": \"Distribuidora ABC\",\n      \"nit\": \"900111222-3\",\n      \"telefono\": \"6011111111\",\n      \"estado\": true\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/lote",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "lote"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Actualizar Categoría (mismo codvb6)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id_empresa\": 1,\n  \"codvb6\": \"CAT001\",\n  \"nombre_categoria\": \"Electrónica y Tecnología\",\n  \"descripcion_categoria\": \"Productos electrónicos y tecnología actualizada\",\n  \"estado\": true\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/sync-vb6/categoria",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "sync-vb6", "categoria"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

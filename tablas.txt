@@ -1,0 +1,16 @@
+tblarticulos
+tblcategoria
+tblclientes
+tblcontrolcaja
+tbldetalle_pedido (detalle de compras)
+tbldetalle_venta
+tbldevolucion_ventas
+tblegresos
+tblempleados
+tblfacturasanteriores
+tblfacturasanterioresproveedor
+tblpagos
+tblpedidos
+tblproductosrelacionados
+tblproveedores
+tblventas

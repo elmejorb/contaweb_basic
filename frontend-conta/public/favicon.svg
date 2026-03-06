@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Cara superior -->
+  <polygon points="32,8 56,20 32,32 8,20" stroke="#7c3aed" stroke-width="2.5" fill="none"/>
+  <!-- Cara izquierda -->
+  <polygon points="8,20 32,32 32,56 8,44" stroke="#8b5cf6" stroke-width="2.5" fill="none"/>
+  <!-- Cara derecha -->
+  <polygon points="56,20 32,32 32,56 56,44" stroke="#6d28d9" stroke-width="2.5" fill="none"/>
+</svg>
