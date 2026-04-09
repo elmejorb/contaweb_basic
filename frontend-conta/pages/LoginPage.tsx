@@ -4,6 +4,7 @@ import { LockClosedIcon, EyeIcon, EyeOffIcon } from '../components/icons/IconCom
 
 interface LoginPageProps {
   onGoToRegistro?: () => void;
+  onGoToRecuperarPassword?: () => void;
 }
 
 const ZynixLogo: React.FC = () => (
@@ -20,7 +21,7 @@ const ZynixLogo: React.FC = () => (
 );
 
 
-const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegistro }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegistro, onGoToRecuperarPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -80,7 +81,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onGoToRegistro }) => {
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-sm font-bold text-gray-600 block">Contraseña</label>
-                <a href="#" className="text-sm text-violet-600 hover:underline">¿Olvidó su contraseña?</a>
+                <button type="button" onClick={onGoToRecuperarPassword} className="text-sm text-violet-600 hover:underline">¿Olvidó su contraseña?</button>
               </div>
               <div className="relative">
                 <input

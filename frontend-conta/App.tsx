@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegistroPage from './pages/RegistroPage';
+import RecuperarPasswordPage from './pages/RecuperarPasswordPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoadingScreenDashboard from './components/layout/LoadingScreenDashboard';
 
@@ -11,6 +12,7 @@ const AppContent: React.FC = () => {
   const [showLoading, setShowLoading] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showRegistro, setShowRegistro] = useState(false);
+  const [showRecuperarPassword, setShowRecuperarPassword] = useState(false);
 
   useEffect(() => {
     if (user && !showDashboard) {
@@ -32,7 +34,15 @@ const AppContent: React.FC = () => {
     if (showRegistro) {
       return <RegistroPage onBackToLogin={() => setShowRegistro(false)} />;
     }
-    return <LoginPage onGoToRegistro={() => setShowRegistro(true)} />;
+    if (showRecuperarPassword) {
+      return <RecuperarPasswordPage onBackToLogin={() => setShowRecuperarPassword(false)} />;
+    }
+    return (
+      <LoginPage
+        onGoToRegistro={() => setShowRegistro(true)}
+        onGoToRecuperarPassword={() => setShowRecuperarPassword(true)}
+      />
+    );
   }
 
   if (showLoading) {

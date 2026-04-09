@@ -114,6 +114,46 @@ export const authService = {
   },
 
   /**
+   * Solicitar código de recuperación de contraseña
+   */
+  solicitarResetPassword: async (email: string): Promise<{ error: boolean; mensaje: string }> => {
+    try {
+      const response = await api.post('/forgot-password', { email });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) {
+        throw error.response.data;
+      }
+      throw { error: true, mensaje: 'Error de conexión. Verifique su conexión a internet.' };
+    }
+  },
+
+  /**
+   * Restablecer contraseña con código
+   */
+  resetPassword: async (
+    email: string,
+    codigo: string,
+    password: string,
+    password_confirmation: string
+  ): Promise<{ error: boolean; mensaje: string }> => {
+    try {
+      const response = await api.post('/reset-password', {
+        email,
+        codigo,
+        password,
+        password_confirmation,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) {
+        throw error.response.data;
+      }
+      throw { error: true, mensaje: 'Error de conexión. Verifique su conexión a internet.' };
+    }
+  },
+
+  /**
    * Obtener token almacenado
    */
   getToken: (): string | null => {

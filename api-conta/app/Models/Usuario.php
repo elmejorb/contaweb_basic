@@ -34,7 +34,9 @@ class Usuario extends Model implements AuthenticatableContract, AuthorizableCont
         'email_validado',
         'email_token',
         'estado_us',
-        'cambio_password'
+        'cambio_password',
+        'password_reset_token',
+        'password_reset_expires_at'
     ];
 
     /**
@@ -45,7 +47,8 @@ class Usuario extends Model implements AuthenticatableContract, AuthorizableCont
     protected $hidden = [
         'password_us',
         'email_token',
-        'token_us'
+        'token_us',
+        'password_reset_token'
     ];
 
     /**

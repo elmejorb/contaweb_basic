@@ -60,6 +60,8 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     // Rutas de autenticación (públicas)
     $router->post('/login', 'AuthController@login');
     $router->post('/registro', 'AuthController@registro');
+    $router->post('/forgot-password', 'AuthController@solicitarResetPassword');
+    $router->post('/reset-password', 'AuthController@resetPassword');
 
     // Rutas públicas de CRM (sin autenticación)
     $router->post('/crm/validar-token', 'EmpresaController@validarTokenCRM');

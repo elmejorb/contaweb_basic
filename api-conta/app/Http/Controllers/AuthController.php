@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
+use App\Services\SmtpMailService;
 
 class AuthController extends Controller
 {
@@ -166,7 +167,7 @@ class AuthController extends Controller
 
         $empresa = \App\Models\Empresa::create([
             'nombre_empresa' => $datosCliente['empresa'],
-            'nit_empresa' => $datosCliente['nit'],
+            'nit_empresa' => $datosCliente['nit'] ?? '0',
             'telefono_empresa' => $datosCliente['telefono'] ?? null,
             'email_empresa' => $datosCliente['email'] ?? $request->email,
             'token_crm' => $request->token_crm,
@@ -450,6 +451,153 @@ class AuthController extends Controller
                 'mensaje' => 'Error al cambiar contraseña'
             ], 500);
         }
+    }
+
+    /**
+     * Solicitar recuperación de contraseña
+     */
+    public function solicitarResetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'Ingrese un correo electrónico válido'
+            ], 400);
+        }
+
+        $usuario = Usuario::where('email_us', $request->email)->first();
+
+        // Siempre responder con éxito para no revelar si el email existe
+        if (!$usuario) {
+            return response()->json([
+                'error' => false,
+                'mensaje' => 'Si el correo está registrado, recibirás un código de recuperación.'
+            ]);
+        }
+
+        // Generar código de 6 dígitos
+        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Almacenar código hasheado con bcrypt para verificación segura
+        $usuario->password_reset_token = Hash::make($codigo);
+        $usuario->password_reset_expires_at = Carbon::now()->addMinutes(30);
+        $usuario->save();
+
+        // Enviar email con el código
+        $this->enviarEmailRecuperacion($usuario->email_us, $usuario->nombre_us, $codigo);
+
+        return response()->json([
+            'error' => false,
+            'mensaje' => 'Si el correo está registrado, recibirás un código de recuperación.'
+        ]);
+    }
+
+    /**
+     * Restablecer contraseña con código
+     */
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'codigo' => 'required|string|size:6',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'Datos inválidos',
+                'errores' => $validator->errors()
+            ], 400);
+        }
+
+        $usuario = Usuario::where('email_us', $request->email)->first();
+
+        if (!$usuario || !$usuario->password_reset_token || !$usuario->password_reset_expires_at) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'Solicitud de recuperación no válida. Solicita un nuevo código.'
+            ], 400);
+        }
+
+        // Verificar expiración
+        if (Carbon::now()->gt(Carbon::parse($usuario->password_reset_expires_at))) {
+            $usuario->password_reset_token = null;
+            $usuario->password_reset_expires_at = null;
+            $usuario->save();
+
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'El código ha expirado. Solicita uno nuevo.'
+            ], 400);
+        }
+
+        // Verificar código con bcrypt
+        if (!Hash::check($request->codigo, $usuario->password_reset_token)) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'El código de verificación no es válido.'
+            ], 400);
+        }
+
+        // Actualizar contraseña
+        $usuario->password_us = Hash::make($request->password);
+        $usuario->password_reset_token = null;
+        $usuario->password_reset_expires_at = null;
+        $usuario->save();
+
+        return response()->json([
+            'error' => false,
+            'mensaje' => 'Contraseña actualizada exitosamente. Ya puedes iniciar sesión.'
+        ]);
+    }
+
+    /**
+     * Enviar email de recuperación de contraseña vía SMTP
+     */
+    private function enviarEmailRecuperacion($email, $nombre, $codigo)
+    {
+        $htmlBody = "
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; }
+                .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .header { text-align: center; margin-bottom: 30px; }
+                .header h1 { color: #7c3aed; margin: 0; font-size: 24px; }
+                .code-box { background: #f3f0ff; border: 2px solid #7c3aed; border-radius: 8px; padding: 20px; text-align: center; margin: 20px 0; }
+                .code { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #7c3aed; }
+                .info { color: #666; font-size: 14px; line-height: 1.5; }
+                .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 12px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h1>ContaRs Pro</h1>
+                </div>
+                <p>Hola <strong>{$nombre}</strong>,</p>
+                <p class='info'>Recibimos una solicitud para restablecer tu contraseña. Usa el siguiente código:</p>
+                <div class='code-box'>
+                    <div class='code'>{$codigo}</div>
+                </div>
+                <p class='info'>Este código expira en <strong>30 minutos</strong>.</p>
+                <p class='info'>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+                <div class='footer'>
+                    <p>&copy; ContaRs Pro - Este es un mensaje automático, no respondas a este correo.</p>
+                </div>
+            </div>
+        </body>
+        </html>";
+
+        $textBody = "Hola {$nombre}, tu código de recuperación es: {$codigo}. Expira en 30 minutos.";
+
+        $mailer = new SmtpMailService();
+        $mailer->send($email, $nombre, 'Código de recuperación - ContaRs Pro', $htmlBody, $textBody);
     }
 
     /**
