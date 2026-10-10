@@ -40,6 +40,43 @@ $router->post('/sync/saldos/batch', 'SaldoCarteraController@recibirLoteDesdeVB6'
 
 $router->post('/sync/pagos/batch', 'PagoController@recibirLoteDesdeVB6');
 
+// ---------------------------------------------------------------
+// Sync v2 — ingesta sin pérdida con idempotency_key + ACK por fila.
+// Entidades soportadas: ver SyncV2Controller::ENTIDADES
+// ---------------------------------------------------------------
+$router->post('/sync/v2/{entidad}/batch', 'V2\\SyncV2Controller@recibirLote');
+
+// Dashboard mobile — vista magic-link con email+token_api por query.
+$router->get('/v2/dashboard/resumen',           'V2\\DashboardV2Controller@resumen');
+$router->get('/v2/dashboard/ventas',            'V2\\DashboardV2Controller@ventas');
+$router->get('/v2/dashboard/cartera',           'V2\\DashboardV2Controller@cartera');
+$router->get('/v2/dashboard/cuentas-por-pagar', 'V2\\DashboardV2Controller@cuentasPorPagar');
+$router->get('/v2/dashboard/productos',         'V2\\DashboardV2Controller@productos');
+$router->get('/v2/dashboard/graficos',          'V2\\DashboardV2Controller@graficos');
+
+// Auth v2 — login/registro/perfil/vincular empresa
+$router->post('/v2/auth/login',                 'V2\\AuthV2Controller@login');
+$router->post('/v2/auth/registrar',             'V2\\AuthV2Controller@registrar');
+$router->get('/v2/auth/perfil',                 'V2\\AuthV2Controller@perfil');
+$router->put('/v2/auth/perfil',                 'V2\\AuthV2Controller@actualizarPerfil');
+$router->post('/v2/empresas/vincular',          'V2\\AuthV2Controller@vincularEmpresa');
+$router->delete('/v2/empresas/{id:[0-9]+}/desvincular', 'V2\\AuthV2Controller@desvincularEmpresa');
+$router->get('/v2/dashboard/inventario',        'V2\\DashboardV2Controller@inventario');
+$router->get('/v2/dashboard/clientes',          'V2\\DashboardV2Controller@clientesListado');
+$router->get('/v2/dashboard/proveedores',       'V2\\DashboardV2Controller@proveedoresListado');
+$router->get('/v2/dashboard/gastos',            'V2\\DashboardV2Controller@gastos');
+$router->get('/v2/dashboard/estado-resultados', 'V2\\DashboardV2Controller@estadoResultados');
+$router->get('/v2/dashboard/venta/{id:[0-9]+}',           'V2\\DashboardV2Controller@detalleVenta');
+$router->get('/v2/dashboard/cliente/{id:[0-9]+}/facturas','V2\\DashboardV2Controller@facturasCliente');
+
+// Página mobile standalone (HTML+JS) para el cliente final
+$router->get('/v2/mobile', function () {
+    $path = __DIR__ . '/../public/v2-mobile.html';
+    return new \Illuminate\Http\Response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=utf-8',
+    ]);
+});
+
 // Rutas alias para compatibilidad con VB6 (rutas antiguas)
 $router->post('/controlcaja/vb6/batch', 'CierreCajaController@recibirLoteDesdeVB6');
 $router->post('/saldos/vb6/batch', 'SaldoCarteraController@recibirLoteDesdeVB6');
