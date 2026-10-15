@@ -489,11 +489,15 @@ class SyncV2Controller extends Controller
      * Recalcula ventas.saldo = total − SUM(pagos activos − descuentos − retenciones).
      * Lo invocamos desde upsertPago para cerrar la cuenta cuando llega un pago,
      * y desde el command de recálculo retroactivo para arreglar cartera histórica.
+     *
+     * REGLA: solo aplica a ventas a CRÉDITO (forma_pago_id = 6). Las de CONTADO
+     * siempre tienen saldo 0 (el pago entra en caja, no en tblpagos del VB6).
      */
     private function recalcularSaldoVenta(int $ventaId): void
     {
         $venta = Venta::find($ventaId);
         if (!$venta) return;
+        if ((int) $venta->forma_pago_id !== 6) return; // no es crédito → nada que recalcular
 
         $aplicado = Pago::where('venta_id', $ventaId)
             ->where('estado', 'activo')
@@ -501,7 +505,7 @@ class SyncV2Controller extends Controller
             ->value('total_aplicado');
 
         $nuevoSaldo = max(0, (float) $venta->total - (float) $aplicado);
-        if ((float) $venta->saldo === $nuevoSaldo) return; // ya está bien, no re-escribir
+        if (abs((float) $venta->saldo - $nuevoSaldo) < 0.01) return; // ya está bien
 
         $venta->saldo = $nuevoSaldo;
         $venta->abono = (float) $venta->total - $nuevoSaldo;
