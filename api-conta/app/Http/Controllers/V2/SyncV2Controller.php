@@ -471,7 +471,41 @@ class SyncV2Controller extends Controller
             'estado'        => ($data['estado'] ?? ($data['Estado'] ?? '')) === 'Anulada' ? 'anulado' : 'activo',
             'fecha_actualizacion_origen' => $fechaOrigen,
         ];
-        return Pago::updateOrCreate($atributos, $valores)->id;
+        $pago = Pago::updateOrCreate($atributos, $valores);
+
+        // CRÍTICO: recalcular el saldo de la venta asociada.
+        // Sin esto, la cartera (v_cartera_clientes) queda mostrando el saldo
+        // anterior al pago aunque el pago sí se registre. El desktop reencola
+        // la venta tras el pago, pero por si el /ventas/batch llega antes del
+        // /pagos/batch o viceversa, acá cerramos la cuenta de forma autoritaria.
+        if ($ventaId) {
+            $this->recalcularSaldoVenta((int) $ventaId);
+        }
+
+        return $pago->id;
+    }
+
+    /**
+     * Recalcula ventas.saldo = total − SUM(pagos activos − descuentos − retenciones).
+     * Lo invocamos desde upsertPago para cerrar la cuenta cuando llega un pago,
+     * y desde el command de recálculo retroactivo para arreglar cartera histórica.
+     */
+    private function recalcularSaldoVenta(int $ventaId): void
+    {
+        $venta = Venta::find($ventaId);
+        if (!$venta) return;
+
+        $aplicado = Pago::where('venta_id', $ventaId)
+            ->where('estado', 'activo')
+            ->selectRaw('COALESCE(SUM(valor), 0) - COALESCE(SUM(descuento), 0) - COALESCE(SUM(retencion), 0) AS total_aplicado')
+            ->value('total_aplicado');
+
+        $nuevoSaldo = max(0, (float) $venta->total - (float) $aplicado);
+        if ((float) $venta->saldo === $nuevoSaldo) return; // ya está bien, no re-escribir
+
+        $venta->saldo = $nuevoSaldo;
+        $venta->abono = (float) $venta->total - $nuevoSaldo;
+        $venta->save();
     }
 
     private function mapFormaPago(?string $tipoTexto, ?int $explicito): int
